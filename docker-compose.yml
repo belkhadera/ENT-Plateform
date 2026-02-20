@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # MONGODB
+  # ============================================
+  mongodb:
+    image: mongo:7
+    container_name: est-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ============================================
+  # REDIS
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: est-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============================================
+  # AUTH SERVICE
+  # ============================================
+  auth-service:
+    build:
+      context: ./backend/services/auth-service
+      dockerfile: Dockerfile
+    container_name: est-auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      NODE_ENV: development
+      PORT: 8001
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/auth_db?authSource=admin
+      JWT_SECRET: super-secret-jwt-key-change-in-production-123456
+      JWT_EXPIRES_IN: 1d
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ORIGIN: http://localhost:3000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    volumes:
+      - ./backend/services/auth-service/src:/app/src
+      - /app/node_modules
+
+  # ============================================
+  # FRONTEND
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: est-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8001
+      
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - /app/node_modules
+    networks:
+      - est-network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+networks:
+  est-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  redis-data:

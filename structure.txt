@@ -1,0 +1,299 @@
+ent-est-sale/
+├── backend/                          # Microservices Backend (Express.js)
+│   ├── services/
+│   │   ├── auth-service/            # MS1: Authentication (Keycloak/JWT)
+│   │   │   ├── src/
+│   │   │   │   ├── config/
+│   │   │   │   │   ├── db.js
+│   │   │   │   │   ├── keycloak.js
+│   │   │   │   │   └── jwt.js
+│   │   │   │   ├── controllers/
+│   │   │   │   │   └── authController.js
+│   │   │   │   ├── routes/
+│   │   │   │   │   └── authRoutes.js
+│   │   │   │   ├── middleware/
+│   │   │   │   │   └── authMiddleware.js
+│   │   │   │   ├── models/
+│   │   │   │   │   └── User.js
+│   │   │   │   └── app.js
+│   │   │   ├── package.json
+│   │   │   ├── .env
+│   │   │   └── Dockerfile
+│   │   │
+│   │   ├── file-service/            # MS2: Gestion des fichiers
+│   │   │   ├── src/
+│   │   │   │   ├── config/
+│   │   │   │   │   ├── db.js
+│   │   │   │   │   └── minio.js
+│   │   │   │   ├── controllers/
+│   │   │   │   │   └── fileController.js
+│   │   │   │   ├── routes/
+│   │   │   │   │   └── fileRoutes.js
+│   │   │   │   ├── middleware/
+│   │   │   │   │   └── authMiddleware.js
+│   │   │   │   ├── models/
+│   │   │   │   │   └── Course.js
+│   │   │   │   └── app.js
+│   │   │   ├── package.json
+│   │   │   ├── .env
+│   │   │   └── Dockerfile
+│   │   │
+│   │   ├── user-service/            # MS: Gestion des utilisateurs
+│   │   │   ├── src/
+│   │   │   │   ├── config/
+│   │   │   │   │   └── db.js
+│   │   │   │   ├── controllers/
+│   │   │   │   │   └── userController.js
+│   │   │   │   ├── routes/
+│   │   │   │   │   └── userRoutes.js
+│   │   │   │   ├── middleware/
+│   │   │   │   │   └── authMiddleware.js
+│   │   │   │   ├── models/
+│   │   │   │   │   └── User.js
+│   │   │   │   └── app.js
+│   │   │   ├── package.json
+│   │   │   ├── .env
+│   │   │   └── Dockerfile
+│   │   │
+│   │   ├── course-service/          # MS: Gestion des cours
+│   │   │   ├── src/
+│   │   │   │   ├── config/
+│   │   │   │   │   └── db.js
+│   │   │   │   ├── controllers/
+│   │   │   │   │   └── courseController.js
+│   │   │   │   ├── routes/
+│   │   │   │   │   └── courseRoutes.js
+│   │   │   │   ├── middleware/
+│   │   │   │   │   └── authMiddleware.js
+│   │   │   │   ├── models/
+│   │   │   │   │   └── Course.js
+│   │   │   │   └── app.js
+│   │   │   ├── package.json
+│   │   │   ├── .env
+│   │   │   └── Dockerfile
+│   │   │
+│   │   ├── messaging-service/       # MS: Messagerie
+│   │   │   ├── src/
+│   │   │   │   ├── config/
+│   │   │   │   │   ├── db.js
+│   │   │   │   │   └── socket.js
+│   │   │   │   ├── controllers/
+│   │   │   │   │   └── messageController.js
+│   │   │   │   ├── routes/
+│   │   │   │   │   └── messageRoutes.js
+│   │   │   │   ├── middleware/
+│   │   │   │   │   └── authMiddleware.js
+│   │   │   │   ├── models/
+│   │   │   │   │   └── Message.js
+│   │   │   │   └── app.js
+│   │   │   ├── package.json
+│   │   │   ├── .env
+│   │   │   └── Dockerfile
+│   │   │
+│   │   ├── calendar-service/        # MS: Calendrier et emploi du temps
+│   │   │   ├── src/
+│   │   │   │   ├── config/
+│   │   │   │   │   └── db.js
+│   │   │   │   ├── controllers/
+│   │   │   │   │   └── calendarController.js
+│   │   │   │   ├── routes/
+│   │   │   │   │   └── calendarRoutes.js
+│   │   │   │   ├── middleware/
+│   │   │   │   │   └── authMiddleware.js
+│   │   │   │   ├── models/
+│   │   │   │   │   └── Event.js
+│   │   │   │   └── app.js
+│   │   │   ├── package.json
+│   │   │   ├── .env
+│   │   │   └── Dockerfile
+│   │   │
+│   │   ├── exam-service/            # MS: Gestion des examens
+│   │   │   ├── src/
+│   │   │   │   ├── config/
+│   │   │   │   │   └── db.js
+│   │   │   │   ├── controllers/
+│   │   │   │   │   └── examController.js
+│   │   │   │   ├── routes/
+│   │   │   │   │   └── examRoutes.js
+│   │   │   │   ├── middleware/
+│   │   │   │   │   └── authMiddleware.js
+│   │   │   │   ├── models/
+│   │   │   │   │   ├── Exam.js
+│   │   │   │   │   └── Submission.js
+│   │   │   │   └── app.js
+│   │   │   ├── package.json
+│   │   │   ├── .env
+│   │   │   └── Dockerfile
+│   │   │
+│   │   ├── ai-chatbot-service/      # MS: IA Chatbot (Ollama)
+│   │   │   ├── src/
+│   │   │   │   ├── config/
+│   │   │   │   │   ├── db.js
+│   │   │   │   │   └── ollama.js
+│   │   │   │   ├── controllers/
+│   │   │   │   │   └── chatbotController.js
+│   │   │   │   ├── routes/
+│   │   │   │   │   └── chatbotRoutes.js
+│   │   │   │   ├── middleware/
+│   │   │   │   │   └── authMiddleware.js
+│   │   │   │   ├── models/
+│   │   │   │   │   └── Conversation.js
+│   │   │   │   └── app.js
+│   │   │   ├── package.json
+│   │   │   ├── .env
+│   │   │   └── Dockerfile
+│   │   │
+│   │   └── admin-service/           # MS4: Administration
+│   │       ├── src/
+│   │       │   ├── config/
+│   │       │   │   └── db.js
+│   │       │   ├── controllers/
+│   │       │   │   └── adminController.js
+│   │       │   ├── routes/
+│   │       │   │   └── adminRoutes.js
+│   │       │   ├── middleware/
+│   │       │   │   └── authMiddleware.js
+│   │       │   ├── models/
+│   │       │   │   ├── User.js
+│   │       │   │   └── Role.js
+│   │       │   └── app.js
+│   │       ├── package.json
+│   │       ├── .env
+│   │       └── Dockerfile
+│   │
+│   └── api-gateway/                 # API Gateway (Point d'entrée unique)
+│       ├── src/
+│       │   ├── config/
+│       │   │   └── routes.js
+│       │   ├── middleware/
+│       │   │   ├── rateLimiter.js
+│       │   │   └── cors.js
+│       │   └── app.js
+│       ├── package.json
+│       ├── .env
+│       └── Dockerfile
+│
+├── frontend/                        # Application React
+│   ├── public/
+│   │   ├── index.html
+│   │   └── favicon.ico
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   │   ├── Header.jsx
+│   │   │   │   ├── Sidebar.jsx
+│   │   │   │   ├── Footer.jsx
+│   │   │   │   └── Loader.jsx
+│   │   │   ├── auth/
+│   │   │   │   ├── Login.jsx
+│   │   │   │   ├── Register.jsx
+│   │   │   │   └── ForgotPassword.jsx
+│   │   │   ├── dashboard/
+│   │   │   │   ├── StudentDashboard.jsx
+│   │   │   │   ├── TeacherDashboard.jsx
+│   │   │   │   └── AdminDashboard.jsx
+│   │   │   ├── courses/
+│   │   │   │   ├── CourseList.jsx
+│   │   │   │   ├── CourseDetails.jsx
+│   │   │   │   ├── CreateCourse.jsx
+│   │   │   │   └── EditCourse.jsx
+│   │   │   ├── messaging/
+│   │   │   │   ├── MessageList.jsx
+│   │   │   │   ├── ChatWindow.jsx
+│   │   │   │   └── NewMessage.jsx
+│   │   │   ├── calendar/
+│   │   │   │   ├── Calendar.jsx
+│   │   │   │   └── EventModal.jsx
+│   │   │   ├── exams/
+│   │   │   │   ├── ExamList.jsx
+│   │   │   │   ├── CreateExam.jsx
+│   │   │   │   ├── TakeExam.jsx
+│   │   │   │   └── GradeExam.jsx
+│   │   │   ├── chatbot/
+│   │   │   │   └── ChatBot.jsx
+│   │   │   └── admin/
+│   │   │       ├── UserManagement.jsx
+│   │   │       ├── RoleManagement.jsx
+│   │   │       └── Statistics.jsx
+│   │   ├── services/
+│   │   │   ├── api.js
+│   │   │   ├── authService.js
+│   │   │   ├── courseService.js
+│   │   │   ├── fileService.js
+│   │   │   ├── messageService.js
+│   │   │   ├── calendarService.js
+│   │   │   ├── examService.js
+│   │   │   ├── chatbotService.js
+│   │   │   └── adminService.js
+│   │   ├── context/
+│   │   │   ├── AuthContext.jsx
+│   │   │   └── ThemeContext.jsx
+│   │   ├── hooks/
+│   │   │   ├── useAuth.js
+│   │   │   └── useSocket.js
+│   │   ├── utils/
+│   │   │   ├── constants.js
+│   │   │   ├── helpers.js
+│   │   │   └── validators.js
+│   │   ├── routes/
+│   │   │   ├── PrivateRoute.jsx
+│   │   │   └── AppRoutes.jsx
+│   │   ├── styles/
+│   │   │   ├── globals.css
+│   │   │   └── variables.css
+│   │   ├── App.jsx
+│   │   ├── index.js
+│   │   └── setupProxy.js
+│   ├── package.json
+│   ├── .env
+│   └── Dockerfile
+│
+├── infrastructure/                  # Configuration Infrastructure
+│   ├── docker/
+│   │   └── docker-compose.yml      # Tous les services
+│   ├── kubernetes/
+│   │   ├── deployments/
+│   │   │   ├── auth-deployment.yaml
+│   │   │   ├── file-deployment.yaml
+│   │   │   ├── user-deployment.yaml
+│   │   │   ├── course-deployment.yaml
+│   │   │   ├── messaging-deployment.yaml
+│   │   │   ├── calendar-deployment.yaml
+│   │   │   ├── exam-deployment.yaml
+│   │   │   ├── chatbot-deployment.yaml
+│   │   │   ├── admin-deployment.yaml
+│   │   │   └── gateway-deployment.yaml
+│   │   ├── services/
+│   │   │   ├── auth-service.yaml
+│   │   │   ├── file-service.yaml
+│   │   │   ├── user-service.yaml
+│   │   │   ├── course-service.yaml
+│   │   │   ├── messaging-service.yaml
+│   │   │   ├── calendar-service.yaml
+│   │   │   ├── exam-service.yaml
+│   │   │   ├── chatbot-service.yaml
+│   │   │   ├── admin-service.yaml
+│   │   │   └── gateway-service.yaml
+│   │   ├── configmaps/
+│   │   │   └── app-config.yaml
+│   │   └── secrets/
+│   │       └── app-secrets.yaml
+│   ├── nginx/
+│   │   └── nginx.conf
+│   └── minio/
+│       └── minio-config.yaml
+│
+├── docs/                            # Documentation
+│   ├── API.md
+│   ├── ARCHITECTURE.md
+│   ├── DEPLOYMENT.md
+│   └── USER_GUIDE.md
+│
+├── scripts/                         # Scripts utilitaires
+│   ├── setup.sh
+│   ├── deploy.sh
+│   └── seed-db.js
+│
+├── .gitignore
+├── README.md
+└── docker-compose.yml              # Développement local
