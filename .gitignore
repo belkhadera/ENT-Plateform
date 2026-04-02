@@ -15,14 +15,8 @@ node_modules/
 data/minio/
 data/minio-data/
 
-# Ollama data
-data/ollama/
-
-# PostgreSQL data
-data/postgres-keycloak/
-
-# Redis data
-data/redis/
+# data 
+data/
 
 # Scripts
 scripts/
