@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const File = require('../models/File');
+const mongoose = require('mongoose'); // Ajouté pour la validation ObjectId
 
 // Ensure uploads directory exists
 const uploadPath = path.join(__dirname, '../uploads');
@@ -13,16 +14,17 @@ if (!fs.existsSync(uploadPath)) {
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadPath);
+    const uploadDir = process.env.UPLOAD_PATH || path.join(__dirname, '../../uploads');
+    // Créer le dossier s'il n'existe pas
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // Generate unique filename
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    const nameWithoutExt = path.basename(file.originalname, ext);
-    // Sanitize filename
-    const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '-');
-    cb(null, `${sanitizedName}-${uniqueSuffix}${ext}`);
+    cb(null, uniqueSuffix + ext);
   }
 });
 
@@ -69,13 +71,11 @@ const upload = multer({
  * @route   POST /api/files/upload
  * @access  Private
  */
+// Dans fileController.js - uploadFile
 const uploadFile = async (req, res) => {
   try {
     console.log('📤 Upload request received');
-    console.log('User:', req.user?.id);
-    console.log('File:', req.file);
-    console.log('Body:', req.body);
-
+    
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -83,37 +83,31 @@ const uploadFile = async (req, res) => {
       });
     }
 
-    // Create file URL - adjust based on your server setup
-    const fileUrl = `/uploads/${req.file.filename}`;
-
-    // Create file record in database
-    // Préparez l'objet de fichier
+    // Stocker SEULEMENT les infos nécessaires, PAS d'URL
     const fileData = {
       originalName: req.file.originalname,
       filename: req.file.filename,
       path: req.file.path,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      uploadedBy: req.user.id,
-      url: fileUrl
+      uploadedBy: req.user.id
+      // PAS DE URL ICI !
     };
 
-    // N'ajoutez courseId que s'il est valide et non vide
-    if (req.body.courseId && req.body.courseId !== 'null' && req.body.courseId !== '') {
+    // Ajouter courseId si valide
+    if (req.body.courseId && req.body.courseId !== 'null') {
       fileData.courseId = req.body.courseId;
     }
 
     const file = await File.create(fileData);
 
-    console.log('✅ File saved to database:', file._id);
-
+    // Répondre sans l'URL
     res.status(201).json({
       success: true,
       data: {
         _id: file._id,
         originalName: file.originalName,
         filename: file.filename,
-        url: file.url,
         mimetype: file.mimetype,
         size: file.size
       },
@@ -121,22 +115,9 @@ const uploadFile = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Upload error:', error);
-    
-    // Delete file if database operation failed
-    if (req.file && fs.existsSync(req.file.path)) {
-      try {
-        fs.unlinkSync(req.file.path);
-        console.log('🗑️ Cleaned up file after error');
-      } catch (unlinkError) {
-        console.error('Failed to delete file:', unlinkError);
-      }
-    }
-    
     res.status(500).json({
       success: false,
-      message: 'Erreur lors du téléchargement du fichier',
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: 'Erreur lors du téléchargement'
     });
   }
 };
@@ -148,8 +129,7 @@ const uploadFile = async (req, res) => {
  */
 const getFile = async (req, res) => {
   try {
-    const file = await File.findById(req.params.id)
-      // .populate('uploadedBy', 'firstName lastName email');
+    const file = await File.findById(req.params.id);
 
     if (!file) {
       return res.status(404).json({
@@ -177,50 +157,39 @@ const getFile = async (req, res) => {
  * @route   GET /api/files/course/:courseId
  * @access  Private
  */
-// const getCourseFiles = async (req, res) => {
-//   try {
-//     const { courseId } = req.params;
-
-//     // Vérification de validité de l'ID
-//     if (!mongoose.Types.ObjectId.isValid(courseId)) {
-//       return res.status(400).json({ success: false, message: 'ID de cours invalide' });
-//     }
-
-//     const files = await File.find({ courseId: courseId })
-//       // .populate('uploadedBy', 'firstName lastName')
-//       .sort({ createdAt: -1 });
-
-//     console.log(`🔍 Recherche fichiers pour le cours: ${courseId} | Trouvés: ${files.length}`);
-
-//     res.json({
-//       success: true,
-//       count: files.length,
-//       data: files
-//     });
-//   } catch (error) {
-//     res.status(500).json({ success: false, error: error.message });
-//   }
-// };
 const getCourseFiles = async (req, res) => {
   try {
     const { courseId } = req.params;
 
-    // Recherche simple sans populate
-    const files = await File.find({ courseId: courseId })
-      .sort({ createdAt: -1 });
+    // Vérifier que courseId est valide
+    if (!courseId || courseId === 'null' || courseId === 'undefined') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de cours invalide'
+      });
+    }
 
-    // Si tu as vraiment besoin des noms, tu devrais soit :
-    // 1. Stocker le "uploadedByName" en dur lors de l'upload
-    // 2. Faire une requête API vers le User Service depuis ici (plus complexe)
+    // Recherche des fichiers
+    const files = await File.find({ 
+      courseId: courseId 
+    }).sort({ createdAt: -1 });
+
+    console.log(`🔍 ${files.length} fichiers trouvés pour le cours ${courseId}`);
 
     res.json({
       success: true,
-      data: files // Retourne les fichiers, le front affichera l'icône et le nom du fichier
+      data: files
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('❌ GetCourseFiles error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la récupération des fichiers',
+      error: error.message 
+    });
   }
 };
+
 /**
  * @desc    Delete file
  * @route   DELETE /api/files/:id
@@ -248,6 +217,7 @@ const deleteFile = async (req, res) => {
     // Delete file from filesystem
     if (fs.existsSync(file.path)) {
       fs.unlinkSync(file.path);
+      console.log('🗑️ Fichier supprimé du disque:', file.path);
     }
 
     // Delete file record from database
@@ -283,8 +253,25 @@ const downloadFile = async (req, res) => {
       });
     }
 
+    console.log('📥 Téléchargement du fichier:', file.originalName);
+    console.log('📂 Chemin:', file.path);
+
     // Check if file exists on filesystem
     if (!fs.existsSync(file.path)) {
+      console.error('❌ Fichier introuvable sur le disque:', file.path);
+      
+      // Essayer de trouver dans le dossier uploads alternatif
+      const alternativePath = path.join(__dirname, '../../uploads', file.filename);
+      if (fs.existsSync(alternativePath)) {
+        console.log('✅ Fichier trouvé dans:', alternativePath);
+        
+        res.setHeader('Content-Type', file.mimetype);
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.originalName)}"`);
+        
+        const fileStream = fs.createReadStream(alternativePath);
+        return fileStream.pipe(res);
+      }
+      
       return res.status(404).json({
         success: false,
         message: 'Fichier introuvable sur le serveur'
@@ -298,8 +285,16 @@ const downloadFile = async (req, res) => {
     // Stream file to response
     const fileStream = fs.createReadStream(file.path);
     fileStream.pipe(res);
+    
+    fileStream.on('error', (err) => {
+      console.error('❌ Erreur lors du streaming:', err);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors du téléchargement'
+      });
+    });
   } catch (error) {
-    console.error('Download file error:', error);
+    console.error('❌ Download file error:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur lors du téléchargement du fichier',
@@ -324,7 +319,7 @@ const getMyFiles = async (req, res) => {
       data: files
     });
   } catch (error) {
-    console.error('Get my files error:', error);
+    console.error('❌ Get my files error:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des fichiers',

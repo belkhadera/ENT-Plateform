@@ -1,9 +1,16 @@
 FROM node:18-alpine
+
 WORKDIR /app
+
+# Copier les fichiers de dépendances
 COPY package*.json ./
-RUN npm install
-# Ne pas copier src ici si tu utilises les volumes, 
-# mais Docker en a besoin pour le premier build
-COPY . . 
+
+# Installer les dépendances avec axios
+RUN npm install && npm install axios
+
+# Copier le reste de l'application
+COPY . .
+
 EXPOSE 8001
-CMD ["npm", "start"]
+
+CMD ["npm", "run", "dev"]

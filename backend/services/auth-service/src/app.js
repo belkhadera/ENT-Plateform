@@ -14,7 +14,7 @@ connectDB();
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: 'http://localhost:3000', // Ton React
+  origin: 'http://192.168.1.21:3000', // Ton React
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization']
 }));

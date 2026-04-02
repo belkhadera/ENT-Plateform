@@ -11,13 +11,34 @@ connectDB();
 app.use(helmet());
 // Dans backend/api-gateway/app.js
 
-app.use(cors({
-  origin: 'http://localhost:3000', // Ton React
+// Configuration CORS pour le cours-service
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Origines autorisées
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://192.168.1.21:3000',
+      'http://localhost:8000',
+      'http://192.168.1.21:8000'
+    ];
+    
+    // Autoriser les requêtes sans origin (appels internes)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('❌ Cours Service - Origine bloquée:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  // AJOUTE 'PATCH' ICI 👇
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 app.use('/api/exams', examRoutes);

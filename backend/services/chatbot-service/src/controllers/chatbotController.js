@@ -103,7 +103,7 @@ async function callOllamaAPI(message, context) {
         max_tokens: 500
       }
     }, {
-      timeout: 30000 // 30 seconds timeout
+      timeout: 120000 // 30 seconds timeout
     });
 
     return response.data.response.trim();

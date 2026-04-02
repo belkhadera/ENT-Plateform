@@ -1,0 +1,10 @@
+Ouvrez http://localhost:8080
+
+Connectez-vous avec admin/admin
+
+Cliquez sur "Create Realm" dans le menu déroulant en haut à gauche
+
+Nommez-le "est-realm"
+
+Ensuite, créez les rôles, clients et utilisateurs via l'interface
+

@@ -1,4 +1,6 @@
 const express = require('express');
+const User = require('../models/User');
+
 const router = express.Router();
 const {
   getConversations,
@@ -20,7 +22,29 @@ router.use(protect);
  * @access  Private
  */
 router.get('/conversations', getConversations);
+/**
+ * @route   GET /api/auth/users
+ * @desc    Get all users (for messaging)
+ * @access  Private
+ */
+router.get('/users', protect, async (req, res) => {
+  try {
+    const users = await User.find({ isActive: true })
+      .select('_id username email firstName lastName role')
+      .sort('firstName lastName');
 
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des utilisateurs'
+    });
+  }
+});
 /**
  * @route   POST /api/messages/conversations
  * @desc    Create a new conversation

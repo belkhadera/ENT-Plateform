@@ -1,0 +1,212 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # KEYCLOAK - Gestion des tokens et authentification
+  # ============================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.5
+    container_name: est-keycloak
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak123
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm.json
+    command: ["start-dev", "--import-realm"]
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/realms/master"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ============================================
+  # POSTGRESQL POUR KEYCLOAK
+  # ============================================
+  postgres-keycloak:
+    image: postgres:15
+    container_name: est-postgres-keycloak
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak123
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres-keycloak-data:/var/lib/postgresql/data
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================
+  # MONGODB
+  # ============================================
+  mongodb:
+    image: mongo:7
+    container_name: est-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ============================================
+  # REDIS
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: est-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============================================
+  # AUTH SERVICE
+  # ============================================
+  auth-service:
+    build:
+      context: ./backend/services/auth-service
+      dockerfile: Dockerfile
+    container_name: est-auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      NODE_ENV: development
+      PORT: 8001
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/auth_db?authSource=admin
+      JWT_SECRET: super-secret-jwt-key-change-in-production-123456
+      JWT_EXPIRES_IN: 1d
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ORIGIN: http://localhost:3000
+      # Keycloak configuration
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: est-realm
+      KEYCLOAK_CLIENT_ID: est-auth-client
+      KEYCLOAK_CLIENT_SECRET: eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI3ZTZlNTkxNS1iNzhiLTQ0MzQtOTlmOS1jNzcxZTJmNTY4OGYifQ.eyJleHAiOjE3NzE2MTU4MjgsImlhdCI6MTc3MTYxNTc0OCwianRpIjoiMDg0M2RlY2UtZGNkYS00MzliLWFjNjYtYzY4Y2E3MWUwMjk5IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwL3JlYWxtcy9lc3QtcmVhbG0iLCJhdWQiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvcmVhbG1zL2VzdC1yZWFsbSIsInR5cCI6IkluaXRpYWxBY2Nlc3NUb2tlbiJ9.JeghiTcE2jmOIwtmNH6stITSjg2NwWTWR5BpX-iq86E
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    volumes:
+      - ./backend/services/auth-service/src:/app/src
+      - /app/node_modules
+
+  # ============================================
+  # COURS SERVICE
+  # ============================================
+  cours-service:
+    build:
+      context: ./backend/services/course-service
+      dockerfile: Dockerfile
+    container_name: est-cours-service
+    ports:
+      - "8002:8002"
+    environment:
+      NODE_ENV: development
+      PORT: 8002
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/cours_db?authSource=admin
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ORIGIN: http://localhost:3000
+      # Keycloak configuration
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: est-realm
+      KEYCLOAK_CLIENT_ID: est-cours-client
+      KEYCLOAK_CLIENT_SECRET: your-cours-client-secret
+      KEYCLOAK_PUBLIC_KEY: your-realm-public-key
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    volumes:
+      - ./backend/services/course-service/src:/app/src
+      - /app/node_modules
+
+  # ============================================
+  # FRONTEND
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: est-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8001
+      REACT_APP_COURS_API_URL: http://localhost:8002
+      REACT_APP_KEYCLOAK_URL: http://localhost:8080
+      REACT_APP_KEYCLOAK_REALM: est-realm
+      REACT_APP_KEYCLOAK_CLIENT_ID: est-frontend-client
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - /app/node_modules
+    networks:
+      - est-network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+networks:
+  est-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  redis-data:
+  postgres-keycloak-data:

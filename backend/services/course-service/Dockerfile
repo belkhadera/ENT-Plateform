@@ -1,7 +1,17 @@
 FROM node:18-alpine
+
+USER root
+
 WORKDIR /app
+
 COPY package*.json ./
-RUN npm install --production
+RUN npm install && \
+    chmod -R 777 /app/node_modules/.bin
+
 COPY . .
-EXPOSE 8003
-CMD ["npm", "start"]
+
+RUN chmod -R 777 /app/node_modules/.bin
+
+EXPOSE 8002
+
+CMD ["npm", "run", "dev"]

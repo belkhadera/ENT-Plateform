@@ -1,4 +1,4 @@
-// backend/models/File.js
+// backend/services/file-service/src/models/File.js
 const mongoose = require('mongoose');
 
 const fileSchema = new mongoose.Schema({
@@ -23,10 +23,6 @@ const fileSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  url: {
-    type: String,
-    required: true
-  },
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -35,10 +31,14 @@ const fileSchema = new mongoose.Schema({
   courseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
-    default: null
+    required: false  // Important: peut être null
   }
+  // PAS DE CHAMP URL DU TOUT
 }, {
   timestamps: true
 });
+
+// Log pour confirmer le chargement
+console.log('✅ Modèle File chargé avec succès');
 
 module.exports = mongoose.model('File', fileSchema);

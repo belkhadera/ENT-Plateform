@@ -1,9 +1,109 @@
-version: '3.8'
 
 services:
-  # ============================================
-  # MONGODB
-  # ============================================
+  api-gateway:
+    build:
+      context: /home/projet/ENT_EST_SALE/backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: est-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      NODE_ENV: development
+      PORT: 8000
+      AUTH_SERVICE_URL: http://auth-service:8001
+      COURSE_SERVICE_URL: http://cours-service:8002
+      FILE_SERVICE_URL: http://file-service:8003
+      CHATBOT_SERVICE_URL: http://chatbot-api:8010
+      EXAMS_SERVICE_URL: http://exam-service:8007
+      CORS_ORIGIN: "http://localhost:3000,http://192.168.1.21:3000"
+
+    depends_on:
+      auth-service:
+        condition: service_started
+      cours-service:
+        condition: service_started
+      file-service:
+        condition: service_started
+    networks:
+      - est-network
+    restart: unless-stopped
+    volumes:
+      - /home/projet/ENT_EST_SALE/backend/api-gateway:/app
+      - /app/node_modules
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.5
+    container_name: est-keycloak
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak123
+    volumes:
+      - /home/projet/ENT_EST_SALE/keycloak/realm-export.json:/opt/keycloak/data/import/realm.json
+    command: ["start-dev", "--import-realm"]
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/realms/master"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  postgres-keycloak:
+    image: postgres:15
+    container_name: est-postgres-keycloak
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak123
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - /home/projet/ENT_EST_SALE/data/postgres-keycloak:/var/lib/postgresql/data
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  minio:
+    image: minio/minio:latest
+    container_name: est-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_DEFAULT_BUCKETS: est-files
+    volumes:
+      - /home/projet/ENT_EST_SALE/data/minio:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
   mongodb:
     image: mongo:7
     container_name: est-mongodb
@@ -13,7 +113,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: admin123
     volumes:
-      - mongodb-data:/data/db
+      - /home/projet/ENT_EST_SALE/data/mongodb:/data/db
     networks:
       - est-network
     restart: unless-stopped
@@ -24,16 +124,13 @@ services:
       retries: 5
       start_period: 40s
 
-  # ============================================
-  # REDIS
-  # ============================================
   redis:
     image: redis:7-alpine
     container_name: est-redis
     ports:
       - "6379:6379"
     volumes:
-      - redis-data:/data
+      - /home/projet/ENT_EST_SALE/data/redis:/data
     networks:
       - est-network
     restart: unless-stopped
@@ -43,12 +140,9 @@ services:
       timeout: 3s
       retries: 5
 
-  # ============================================
-  # AUTH SERVICE
-  # ============================================
   auth-service:
     build:
-      context: ./backend/services/auth-service
+      context: /home/projet/ENT_EST_SALE/backend/services/auth-service
       dockerfile: Dockerfile
     container_name: est-auth-service
     ports:
@@ -62,36 +156,158 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CORS_ORIGIN: http://localhost:3000
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: est-realm
+      KEYCLOAK_CLIENT_ID: est-auth-client
+      KEYCLOAK_CLIENT_SECRET: eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI3ZTZlNTkxNS1iNzhiLTQ0MzQtOTlmOS1jNzcxZTJmNTY4OGYifQ.eyJleHAiOjE3NzE2MTU4MjgsImlhdCI6MTc3MTYxNTc0OCwianRpIjoiMDg0M2RlY2UtZGNkYS00MzliLWFjNjYtYzY4Y2E3MWUwMjk5IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwL3JlYWxtcy9lc3QtcmVhbG0iLCJhdWQiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvcmVhbG1zL2VzdC1yZWFsbSIsInR5cCI6IkluaXRpYWxBY2Nlc3NUb2tlbiJ9.JeghiTcE2jmOIwtmNH6stITSjg2NwWTWR5BpX-iq86E
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # keycloak:
+      #   condition: service_healthy
     networks:
       - est-network
     restart: unless-stopped
     volumes:
-      - ./backend/services/auth-service/src:/app/src
+      - /home/projet/ENT_EST_SALE/backend/services/auth-service/src:/app/src
       - /app/node_modules
 
-  # ============================================
-  # FRONTEND
-  # ============================================
+  cours-service:
+    build:
+      context: /home/projet/ENT_EST_SALE/backend/services/course-service
+      dockerfile: Dockerfile
+    container_name: est-cours-service
+    ports:
+      - "8002:8002"
+    environment:
+      NODE_ENV: development
+      PORT: 8002
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/cours_db?authSource=admin
+      KEYCLOAK_ENABLED: false
+      JWT_SECRET: super-secret-jwt-key-change-in-production-123456
+      CORS_ORIGIN: http://localhost:3000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    volumes:
+      - /home/projet/ENT_EST_SALE/backend/services/course-service:/app
+      - /app/node_modules
+
+  exam-service:
+    build:
+      context: /home/projet/ENT_EST_SALE/backend/services/exam-service
+      dockerfile: Dockerfile
+    container_name: est-exam-service
+    ports:
+      - "8007:8007"
+    environment:
+      NODE_ENV: development
+      PORT: 8007
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/exam_db?authSource=admin
+      JWT_SECRET: super-secret-jwt-key-change-in-production-123456
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    volumes:
+      - /home/projet/ENT_EST_SALE/backend/services/exam-service/src:/app/src
+      - /app/node_modules
+
+  file-service:
+    build:
+      context: /home/projet/ENT_EST_SALE/backend/services/file-service
+      dockerfile: Dockerfile
+    container_name: est-file-service
+    ports:
+      - "8003:8003"
+    environment:
+      NODE_ENV: development
+      PORT: 8003
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/files_db?authSource=admin
+      JWT_SECRET: super-secret-jwt-key-change-in-production-123456
+      JWT_EXPIRES_IN: 1d
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ORIGIN: http://localhost:3000
+      UPLOAD_PATH: /app/uploads
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: false
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET: est-files
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: est-realm
+      KEYCLOAK_CLIENT_ID: est-file-client
+      KEYCLOAK_CLIENT_SECRET: eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI3ZTZlNTkxNS1iNzhiLTQ0MzQtOTlmOS1jNzcxZTJmNTY4OGYifQ
+      MAX_FILE_SIZE: 10485760
+      ALLOWED_FILE_TYPES: image/jpeg,image/png,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      # keycloak:
+      #   condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    volumes:
+      - /home/projet/ENT_EST_SALE/backend/services/file-service/src:/app/src
+      - /app/node_modules
+      - /home/projet/ENT_EST_SALE/uploads:/app/uploads
+      
+  messaging-service:
+    build:
+      context: /home/projet/ENT_EST_SALE/backend/services/messaging-service
+      dockerfile: Dockerfile
+    container_name: est-messaging-service
+    ports:
+      - "8005:8005"
+    environment:
+      NODE_ENV: development
+      PORT: 8005
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/messaging_db?authSource=admin
+      JWT_SECRET: super-secret-jwt-key-change-in-production-123456
+      CORS_ORIGIN: "http://localhost:3000,http://192.168.1.21:3000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    volumes:
+      - /home/projet/ENT_EST_SALE/backend/services/messaging-service/src:/app/src
+      - /app/node_modules
   frontend:
     build:
-      context: ./frontend
+      context: /home/projet/ENT_EST_SALE/frontend
       dockerfile: Dockerfile.dev
     container_name: est-frontend
     ports:
       - "3000:3000"
     environment:
       REACT_APP_API_URL: http://localhost:8001
-      
+      REACT_APP_COURS_API_URL: http://localhost:8002
+      REACT_APP_FILE_API_URL: http://localhost:8003
+      REACT_APP_KEYCLOAK_URL: http://localhost:8080
+      REACT_APP_KEYCLOAK_REALM: est-realm
+      REACT_APP_KEYCLOAK_CLIENT_ID: est-frontend-client
+      REACT_APP_MINIO_URL: http://localhost:9000
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+      - /home/projet/ENT_EST_SALE/frontend/src:/app/src
+      - /home/projet/ENT_EST_SALE/frontend/public:/app/public
       - /app/node_modules
     networks:
       - est-network
@@ -99,10 +315,51 @@ services:
     stdin_open: true
     tty: true
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: est-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - /home/projet/ENT_EST_SALE/data/ollama:/root/.ollama
+    networks:
+      - est-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    command: serve
+
+  chatbot-api:
+    build:
+      context: /home/projet/ENT_EST_SALE/backend/services/chatbot-service
+      dockerfile: Dockerfile
+    container_name: est-chatbot-api
+    ports:
+      - "8010:8010"
+    environment:
+      NODE_ENV: production
+      PORT: 8010
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: llama3.2
+      JWT_SECRET: super-secret-jwt-key-change-in-production-123456
+      JWT_EXPIRES_IN: 1d
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - est-network
+    restart: unless-stopped
+    volumes:
+      - /home/projet/ENT_EST_SALE/backend/services/chatbot-service/src:/app/src
+      - /app/node_modules
+
 networks:
   est-network:
     driver: bridge
 
-volumes:
-  mongodb-data:
-  redis-data:
+# IMPORTANT: volumes doit être un mapping vide car on utilise des bind mounts
+volumes: {}
