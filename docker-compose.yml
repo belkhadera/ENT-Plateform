@@ -1,0 +1,308 @@
+services:
+  postgres-keycloak:
+    image: ${POSTGRES_IMAGE:-postgres:16}
+    container_name: postgres-keycloak
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - ent-net
+
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:latest}
+    container_name: keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_BOOTSTRAP_ADMIN_USERNAME: kcadmin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: kcadmin
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    networks:
+      - ent-net
+
+  cassandra:
+    image: ${CASSANDRA_IMAGE:-cassandra:latest}
+    container_name: cassandra
+    environment:
+      CASSANDRA_CLUSTER_NAME: ent_cluster
+      CASSANDRA_DC: dc1
+      CASSANDRA_RACK: rack1
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 128M
+    ports:
+      - "9042:9042"
+    volumes:
+      - ./data/cassandra:/var/lib/cassandra
+    networks:
+      - ent-net
+
+  cassandra-init:
+    image: ${CASSANDRA_IMAGE:-cassandra:latest}
+    container_name: cassandra-init
+    depends_on:
+      - cassandra
+    volumes:
+      - ./infra/cassandra/init.cql:/init/init.cql:ro
+    command: >
+      /bin/bash -c "
+      echo 'Waiting for Cassandra startup...';
+      until cqlsh cassandra 9042 -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1; do
+        sleep 5;
+      done;
+      cqlsh cassandra 9042 -f /init/init.cql;
+      echo 'Cassandra initialized.'
+      "
+    networks:
+      - ent-net
+
+  minio:
+    image: ${MINIO_IMAGE:-minio/minio:latest}
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./data/minio:/data
+    networks:
+      - ent-net
+
+  ollama:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:latest}
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./data/ollama:/root/.ollama
+    networks:
+      - ent-net
+
+  ollama-init:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:latest}
+    container_name: ollama-init
+    depends_on:
+      ollama:
+        condition: service_started
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:1b}
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      echo 'Waiting for Ollama startup...';
+      until ollama list >/dev/null 2>&1; do
+        sleep 5;
+      done;
+      ollama pull ${OLLAMA_MODEL:-llama3.2:1b};
+      echo 'Ollama model ready.'
+    networks:
+      - ent-net
+
+  core-service:
+    build:
+      context: ./services/core-service
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
+    container_name: core-service
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      SERVICE_NAME: core-service
+      SERVICE_PORT: 8000
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ent-est-sale
+      KEYCLOAK_CLIENT_ID: ent-backend
+      KEYCLOAK_CLIENT_SECRET: ent-backend-secret
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./services/core-service/app:/app/app
+    depends_on:
+      - keycloak
+    networks:
+      - ent-net
+
+  upload-service:
+    build:
+      context: ./services/upload-service
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
+    container_name: upload-service
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      SERVICE_NAME: upload-service
+      SERVICE_PORT: 8000
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ent-est-sale
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_PORT: 9042
+      CASSANDRA_KEYSPACE: ent
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: courses
+      MINIO_SECURE: "false"
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./services/upload-service/app:/app/app
+    depends_on:
+      - keycloak
+      - cassandra
+      - cassandra-init
+      - minio
+    networks:
+      - ent-net
+
+  download-service:
+    build:
+      context: ./services/download-service
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
+    container_name: download-service
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      SERVICE_NAME: download-service
+      SERVICE_PORT: 8000
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ent-est-sale
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_PORT: 9042
+      CASSANDRA_KEYSPACE: ent
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: courses
+      MINIO_SECURE: "false"
+      PRESIGNED_URL_EXPIRES_SECONDS: 3600
+    ports:
+      - "8003:8000"
+    volumes:
+      - ./services/download-service/app:/app/app
+    depends_on:
+      - keycloak
+      - cassandra
+      - cassandra-init
+      - minio
+    networks:
+      - ent-net
+
+  admin-service:
+    build:
+      context: ./services/admin-service
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
+    container_name: admin-service
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      SERVICE_NAME: admin-service
+      SERVICE_PORT: 8000
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ent-est-sale
+      KEYCLOAK_ADMIN_CLIENT_ID: admin-cli
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ""
+      KEYCLOAK_ADMIN_REALM: master
+      KEYCLOAK_ADMIN_USERNAME: kcadmin
+      KEYCLOAK_ADMIN_PASSWORD: kcadmin
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_PORT: 9042
+      CASSANDRA_KEYSPACE: ent
+    ports:
+      - "8004:8000"
+    volumes:
+      - ./services/admin-service/app:/app/app
+    depends_on:
+      - keycloak
+      - cassandra
+      - cassandra-init
+    networks:
+      - ent-net
+
+  chat-service:
+    build:
+      context: ./services/chat-service
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
+    container_name: chat-service
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      SERVICE_NAME: chat-service
+      SERVICE_PORT: 8000
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ent-est-sale
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: llama3.2:1b
+      OLLAMA_TEMPERATURE: 0.1
+      OLLAMA_TOP_P: 0.85
+      OLLAMA_REPEAT_PENALTY: 1.1
+      OLLAMA_NUM_CTX: 2048
+      OLLAMA_MAX_TOKENS: 180
+      OLLAMA_TIMEOUT_SECONDS: 300
+      OLLAMA_KEEP_ALIVE: 30m
+      CHAT_MAX_HISTORY_MESSAGES: 4
+      CHAT_MAX_PROMPT_CHARS: 1200
+      CHAT_MAX_REPLY_WORDS: 140
+    ports:
+      - "8005:8000"
+    volumes:
+      - ./services/chat-service/app:/app/app
+    depends_on:
+      keycloak:
+        condition: service_started
+      ollama:
+        condition: service_started
+      ollama-init:
+        condition: service_completed_successfully
+    networks:
+      - ent-net
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-node:22}
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
+    container_name: frontend
+    environment:
+      CORE_SERVICE_PROXY_URL: http://core-service:8000
+      UPLOAD_SERVICE_PROXY_URL: http://upload-service:8000
+      DOWNLOAD_SERVICE_PROXY_URL: http://download-service:8000
+      ADMIN_SERVICE_PROXY_URL: http://admin-service:8000
+      CHAT_SERVICE_PROXY_URL: http://chat-service:8000
+      PROXY_TIMEOUT_SECONDS: 300
+    ports:
+      - "8081:8081"
+    depends_on:
+      - core-service
+      - upload-service
+      - download-service
+      - admin-service
+      - chat-service
+    networks:
+      - ent-net
+
+networks:
+  ent-net:
+    driver: bridge

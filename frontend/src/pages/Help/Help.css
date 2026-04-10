@@ -1,0 +1,393 @@
+/* src/pages/Help/Help.css */
+
+/* Help Actions */
+.help-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0 2.5rem;
+}
+
+.help-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.help-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.help-action-btn svg:first-child {
+  color: var(--primary);
+}
+
+.help-action-btn h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 0.25rem;
+}
+
+.help-action-btn p {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+}
+
+.help-action-btn svg:last-child {
+  margin-left: auto;
+  color: var(--gray-400);
+}
+
+/* Guides Section */
+.guides-section {
+  margin-bottom: 3rem;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 1.5rem;
+}
+
+.guides-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+.guide-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.2s;
+}
+
+.guide-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.guide-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.guide-icon span {
+  font-size: 1.5rem;
+}
+
+.guide-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 0.5rem;
+}
+
+.guide-description {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.guide-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  font-size: 0.8rem;
+}
+
+.guide-read-time {
+  color: var(--gray-500);
+}
+
+.guide-level {
+  padding: 0.2rem 0.5rem;
+  background: var(--gray-100);
+  border-radius: 4px;
+  color: var(--gray-600);
+}
+
+.guide-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: gap 0.2s;
+}
+
+.guide-btn:hover {
+  gap: 0.75rem;
+}
+
+/* FAQ Section */
+.faq-section {
+  margin-bottom: 3rem;
+}
+
+.faq-categories {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.category-btn {
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 20px;
+  background: var(--white);
+  color: var(--gray-600);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.category-btn.active {
+  background: var(--primary);
+  color: var(--white);
+  border-color: var(--primary);
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.faq-item {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.faq-question {
+  padding: 1rem 1.5rem;
+  font-weight: 500;
+  color: var(--gray-800);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.faq-question::-webkit-details-marker {
+  display: none;
+}
+
+.faq-arrow {
+  color: var(--gray-400);
+  transition: transform 0.2s;
+}
+
+.faq-item[open] .faq-arrow {
+  transform: rotate(90deg);
+}
+
+.faq-answer {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  color: var(--gray-600);
+  line-height: 1.6;
+  border-top: 1px solid var(--gray-100);
+  background: var(--gray-50);
+}
+
+.faq-answer p {
+  margin-bottom: 1rem;
+}
+
+.faq-helpful {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gray-200);
+}
+
+.faq-helpful span {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+}
+
+.helpful-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.helpful-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--gray-600);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.helpful-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Tickets Section */
+.tickets-section {
+  margin-bottom: 2rem;
+}
+
+.tickets-list {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ticket-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.ticket-item:last-child {
+  border-bottom: none;
+}
+
+.ticket-info h4 {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--gray-800);
+  margin-bottom: 0.25rem;
+}
+
+.ticket-info p {
+  font-size: 0.8rem;
+  color: var(--gray-500);
+}
+
+.ticket-status {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.resolu {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.status-badge.en_cours {
+  background: #fef7e0;
+  color: #b45309;
+}
+
+.priority-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.priority-badge.haute {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.priority-badge.moyenne {
+  background: #fef7e0;
+  color: #b45309;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .help-actions {
+    grid-template-columns: 1fr;
+  }
+  
+  .guides-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .guides-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .faq-categories {
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    flex-wrap: nowrap;
+  }
+  
+  .category-btn {
+    white-space: nowrap;
+  }
+  
+  .ticket-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .faq-helpful {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .help-action-btn {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .help-action-btn svg:last-child {
+    margin: 0;
+  }
+}
